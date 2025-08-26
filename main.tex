@@ -1,0 +1,296 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{polski}
+%\usepackage[polish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{comment}
+\usepackage{cancel}
+
+\title{freeciv matematyka walki }
+\author{Dominik Maślak}
+
+
+\begin{document}
+
+\maketitle
+
+\section{Prawdopodobieństwo wygrania walki}
+
+Szanse na wygranie walki są czasami intuicyjne łatwe do policzenia. Np co byś powiedział na szansę wygrania w poniższej sytuacji (biorąc pod uwagę zalety terenu i inne modyfikatory): masz 2 punkty ataku przeciwko 3 obrony i taką samą ilość punktów obrażeń? Rozważając, prawdopodobieństwo wygrania każdego starcia wynosi  $\frac{2}{5}$, możesz myśleć, że to da ci sensowne szanse na zwycięstwo coś ala 40\%. Przegrana. Masz jedynie 19\% szans na zwycięstwo. Fakt trwania bitwy przez kilka rund zmierza do tego
+%\footnote{The fact that the battle lasts several rounds tends to give a larger advantage to the biggest power than one could think beforehand.} 
+by dać ci większe korzyści by zwęszyć twoją moc, niż mogłeś o tym pomyśleć wcześniej.
+\newline
+Zakładając, że czytelnik jest zaznajomiony z zasadami walki ( dla każdej rundy brana jest przypadkowa liczba, decydująca kto wygra tą rundę, itd...), spróbujmy znaleźć matematyczną formułę reprezentującą szansę na zwycięstwo.
+
+\section{Zapis i podstawowe obliczenia}
+Weź pod uwagę, że jednostka ma siłę natarcia (wszystkie modyfikację, pola miasta, doświadczenie jednostki w walce, itd... zostaną zastosowane) $s$, a jednostka wroga ma obronę $r$. Ilość punktów obrażeń broniącej się jednostki jest zapisana jako $d_{hp}$, obrażenia zadane w zwyciężonej rundzie przez jednostkę atakującą to $a_{fp}$.
+\newline
+Oznaczmy jako $k$ liczbę zwycięskich rund wymaganą do wygrania walki. Jako $l$ oznaczymy liczbę przegranych rund która powoduję pokonanie ( jest to odliczanie do przegranej). Gdy jednostka atakująca powoduję zniszczenie w zwycięskiej rundzie $( a_{fp} = 1)$, $k$ jest liczbą punktów obrażeń pokonywanej jednostki $(d_{hp})$. Bardziej ogólnie,
+\begin{equation*}
+    k =  
+   \left\lfloor \frac{d_{hp} + a{fp - 1} }{a_{fp}} \right\rfloor = 
+   \left\lceil \frac{d_{hp}}{a_{fp}} \right\rceil
+\end{equation*}.
+
+mogą być policzone podobnie. Szansę wygrania każdej rundy oznaczmy jako $p$, to jest
+\begin{equation*} 
+    p =  \frac{s}{s+r}
+\end{equation*}.
+Zatem, szansa przegrania rundy to
+\begin{equation*}
+    q = 1-p
+\end{equation*}
+Oznaczmy jako $m$ maksymalną możliwą liczbę rund w których trwała walka. Zazwyczaj wynikiem każdej rundy jest to, że jakieś jednostki tracą punkty, a po pokonaniu jednostki, nie może ona więcej uderzać, jej przeciwnik musi zachować co najmniej jeden punkt, całkowita liczba możliwych przegranych to $k+l$, $m$ jest równe
+\begin{equation*}
+    m_d = k + l - 1
+\end{equation*}
+(wariant w którym się to zdarza: atakujący przegrywa $l-1$ rund, a potem wygrywa do zwycięstwa). Ale od wersji 3.0 FREECIV ta liczba może być ograniczona przez zestaw zasad, więc jeżeli $m<k+l-1$, jest tu pewne prawdopodobieństwo, że obydwie jednostki przetrwają bitwę (ograniczenie większe, bądź równe $m_d$ nic nie zmienia).
+
+\section{Wyprowadzenie wzorów matematycznych}
+Załóżmy, że walka zabierze $n$ rund do rozstrzygnięcia, obliczmy zatem prawdopodobieństwo zwycięstwa. Weź pod uwagę, że nie znamy $n$ z góry, ale załóżmy teraz że to jest podane. Dla podanego $n$, prawdopodobieństwo zwycięstwa jest prawdopodobieństwem tego, że $k$ rund będzie wygrane względem tych $n$ prób i mniej niż $l$ rund będzie przegranych. Jeżeli $n<k+l$, wówczas prawdopodobieństwo zwycięstwa jest po prostu takie, że $k$ rund będzie wygranych podczas tych $n$ prób (oznacza to, że mniej niż $l$ rund zostało przegranych). W przypadku zwycięstwa, ostatnia runda musi być ostatecznym uderzeniem (w przeciwnym razie walka powinna zostać przerwana wcześniej). Oprócz tego nie może być $k-1$ uderzeń podczas $n-1$ innych rund. Prawdopodobieństwo jest podane jako rozkład dwumianowy $B(n-1,p)$ i jest to
+\begin{equation*}
+\binom{n - 1}{k - 1}p^{k-1}q^{n-1}
+\end{equation*}.
+Jako że ostatnia runda musi zostać wygrana, mnożymy przez $p$ i uzyskujemy prawdopodobieństwo zwycięstwa po $n$ rundach
+\begin{equation*}
+    P_{Wn} = \binom{n-1}{k-1}p^{k}q^{n-k}
+\end{equation*}.
+Dla jednostki atakującej by wygrać walkę, musimy mieć (biorąc pod uwagę, że $m = m_d$)
+\begin{equation}
+    k \leq k + l
+    \label{eq:1}
+\end{equation}.
+\newline
+Zatem ostatecznie prawdopodobieństwo zwycięstwa wynosi:\newline
+\begin{equation*}
+    P_W =  \sum^{k+l-1}_1 \binom{n-1}{k-1}p^{k}q^{n-k} 
+\end{equation*}.
+
+
+\section{Matematyczne wyprowadzenie licznika pokonania}
+Kod źródłowy freeciv używa nieco innej argumentacji \linebreak  zobacz w ./common/combat.c:unit\_win\_chance()
+i \linebreak ./common/combat.c:win\_chance(). Użyjmy notacji $d$ jako liczby przegranych rund, która musi być mniejsza niż $l$ dla zwycięskiego ataku. Wówczas mamy poniższe prawdopodobieństwo zwycięstwa:
+\begin{equation*}
+    P_W = \sum^{l-1}_{d=0}
+    \binom{k-1+d}{d}
+    p^{k-1}
+    q^{d}
+    p
+\end{equation*}
+Otrzymamy \eqref{eq:1} poprzez podstawienie
+\begin{equation*}
+    n = k + d
+\end{equation*}
+i 
+\begin{equation*}
+    \binom{n-1}{n-k} = \binom{n-1}{k-1}
+\end{equation*}.
+W kodzie,\newline
+$k$ to def\_N\_lose,\newline
+$l$ to att\_N\_lose,\newline
+$p$ to def\_P\_lose1,\newline
+$(1-p)$ to att\_P\_lose1,\newline
+$d$ to lr.\newline
+Ogranicznik round nie jest obecnie brany pod uwagę w kodzie, ale prawdopodobnie któregoś dnia będzie.
+
+\section{Ogólne wyprowadzenia}
+Wyobraźmy sobie sytuację, w której walka zawsze składa się z $m$ rund nawet gdy zazwyczaj jedna ze stron w rzeczywistości jest zabita przed osiągnięciem liczby rund; mamy teraz ciąg $2^m$ różnych wymyślonych bitew. Wszystkie rzeczywiste walki mają jeden lub więcej wystąpień w tym ciągu gdzie aktualna runda jest dopasowana jako rzeczywista a pozostałe są wszystkimi innymi przypadkami (dla $n$ rund walki, istnieje $2^{m-n}$ pasujących elementów). Możemy zobaczyć, że prawdopodobieństwo wymyślonego podzbioru jest równe prawdopodobieństwu rzeczywistej bitwy do której jest dopasowane (ponieważ pierwsze rundy są podobne, kolejne wyimaginowane rundy są niezależne, a możliwość zdarzenia się jakiejkolwiek z dostępnych kombinacji wynosi $1$). Wówczas, każdy ciąg gdzie $k$ lub więcej rund są wygrane oznacza wygranie starcia, a każdy jeden który ma $l$ lub więcej rund przegranych oznacza przegranie starcia (ponieważ $m\leq m_d k + l$, rozważane starcie nie może mieć $l$ przegranych gdy w rzeczywistości ma $k$ wygranych, itd...). Tak więc, powróćmy do modelu Bernoullego: prawdopodobieństwo zwycięstwa jest równe prawdopodobieństwu posiadania $k$ lub więcej sukcesów w ciągu $B(m,p)$. Może to zostać to wyrażone za pomocą przyrostowej funkcji rozkładu Bernoulli-ego (możliwość uzyskania k lub mniej sukcesów):
+\begin{equation*}
+    F_{B \ N,p}(k) = \sum^{k}_{i=0}
+    \binom{N}{i}p^{i}
+    (1-p)^{N-1}
+\end{equation*}
+prawdopodobieństwa wygrania, przegrania i "patu" są uwzględniane \linebreak(jeżeli
+ $l\leq m \geq k$)
+ \begin{equation}
+ \label{eq1}
+     P_W = 1 - F_{B \ m,p} (k-1) = F_{B \ m,q}(m-k)
+ \end{equation}
+ \begin{equation}
+ \label{eq2}
+     P_L = 1 - F_{B \ m,q} (l-1) = F_{B \ m,p}(m-l)
+ \end{equation}
+ \begin{equation*}
+     P_S = 1 - P_W - P_L = F_{B \ m,p} (k-1) - F_{B \ m,q} (m-l) =
+     F_{B \ m,q} (l-1) - F_{B \ m,q} (m-k)
+ \end{equation*}
+Równoważnie do \ref{eq1}, \ref{eq2} i tych form ( z $m = m_d$) które jest rozwinięte jako
+\begin{equation}
+    P_W = 1 - \sum^{k-1}_{i=0} \binom{m}{i}p^{i}q^{m-i} = 
+    \sum^{m}_{i=k}\binom{m}{i}p^{i}q^{m-i}
+\end{equation}
+może być przejrzyście ukazane jako przekształcenie algebraiczne, tylko że nikt tego nie zrobił tu jeszcze.
+\section{Przybliżone oszacowanie szansy wygranej}
+Rozkłady dwumianowe są dla matematyków dobrze przestudiowanymi szczurami laboratoryjnymi, tak więc znane są szybkie sposoby oszacowania ich przybliżenia. Losowe wartości dwumianowe są przedmiotem centralnego twierdzenia granicznego, a $B(N,p)$, z wystarczająco dużym $N$ prowadzi do normalnego rozkładu $N(\mu = N_p, \: \sigma = \sqrt{npq})$ (pierwszy parametr to średnia, drugi to odchylenie standardowe od dwóch rozkładów). Rozkład normalny jest skalowalny od standardowego $N(1,1)$ przy pomocy ciągłego rozkładu prawdopodobieństwa
+\begin{equation*}
+    \Phi (x) = \int^{x}_{- \infty}
+    \frac{e ^{-\frac{x^2}{2}}}
+    {\sqrt{2\pi}}\,dx
+\end{equation*}
+tak, że z funkcją skalowalną $x(\alpha) = \frac{\alpha-\mu}{\sigma}$
+\begin{equation*}
+    F_{B \: N,p}(k) \approx \Phi(x-(k-0.5))-\Phi(x(-0.5))
+\end{equation*}
+tak więc
+\begin{equation*}
+    P_W \approx 1 - \Phi \left(
+    \frac{k - mp - 0.5}{\sqrt{mpq}}\right)
+    +
+    \Phi\left(\frac{-mp-0.5}{\sqrt{mpq}}\right)
+\end{equation*}
+Skoro $\Phi(x < -3) < 0.0015$ i $\Phi(x > -3) < 0.9985$, możemy być niemalże pewni wyniku bitwy jeżeli wynik $\frac{|mp-k|}{\sqrt{mpq}}$ jest większy niż 3 bez specjalnych obliczeń. W tych przedziałach, funkcja $\Phi(x)$ jest wygładzona i może być łatwo przybliżona. \newline
+Problemy zaczynają się gdy $p$ znacznie odbiega od $0.5$, wielkie $N$ dla wiarygodnej wartości przybliżenia staje się bardzo duże.
+Górny szacunek błędu ma postać
+\begin{equation*}
+    \Delta_{N_{max}} = 0.7655 \frac{p^2+q^2}{\sqrt{mpq}} \overset{p \ll 0.5}{\approx} \frac{0.7655}{\sqrt{mp}}
+\end{equation*}
+Na szczęście dla małych wartości $p$ działa przybliżanie rozkładem Poisson-a $P(\lambda = N_p)$, których parametry równe są obu średnim i rozproszeniom; dla wielu możliwości wystarczy zamienić $p$ z $q$. Funkcja ma postać
+\begin{equation}
+    F_{P\: \lambda} (k) = \sum^{k}_{i=0} \frac{\lambda^{k}e^{-\lambda}}{k!}
+\end{equation}
+\begin{equation*}
+    P_{W} \overset{p \ll 0.5}{\approx} 1 - F_{P \: mp} (k)
+\end{equation*}
+Błąd jest ograniczony przez $\Delta_{P_{max}} = \min (mp^{2}, \:p)$ . Rozkład Poisson-a nie może być skalowalny od pojedynczej krzywej, ale sam rząd stabilizuje się wystarczająco szybko. Możemy zasugerować które przybliżenie jest lepsze poprzez przestudiowanie $\frac{\Delta_{N_{\max}}}{\Delta_{P_{\max}}}$. To jak dla $m > 1$, tak, że kiedy ta wartość jest większa niż 2.3, rozkład normalny jest lepszy, a gdy poniżej 1.125, rozkład Poisson-a, a w przedziale pomiędzy tymi liczbami dobrze jest wziąć średnią z obydwu, co da nam dobre oszacowanie (zwłaszcza gdy liczba możliwości jest mniejsza niż $50\%$. ponieważ w ty regionie przybliżenie ma tendencję do błędnych wyników w przeciwnym kierunku), ale ten pomysł wymaga lepszych założeń matematycznych. Rozważana dokładność tego wszystkiego jest w okolicy $\pm 4 \%$  wartości bezwzględnej, i może dochodzić do $\pm 0.5\%$ w przedziale dla $m > 10$.
+\section{Odpowiednik zabójstwa}
+Każdy atakujący jest scharakteryzowany przez trzy parametry -- zdrowie $a_{hp}$, siłę $s$ i siłę ognia $a_{fp}$ (podobnie ma każdy obrońca; miejmy tutaj na uwadze $m = k+l-1$). Dwóch atakujących z czego co najmniej jeden inny parametr nie mogący atakować celu w ten sam sposób (udowodnij samodzielnie, że intuicyjne założenie "dwukrotnie więcej $f_{p}$ z dwukrotnie mniejszą siłą da prawdopodobnie mniejsze obrażenie" jest \emph{fałszem}. Możemy rozważyć na określonego obrońcę: jaką wartość zdrowia powinien mieć atakujący o standardowej sile i jaką siłę ognia by zabić obrońcę z takim samym prawdopodobieństwem dla atakującego i obrońcy. Dla tego przypadku, rozważmy uproszczone normalne przybliżenie (racjonalną precyzję dla dużego $mq$):
+\begin{equation*}
+    P_{W} = 1 - P_{L} = F_{B \: m,q}\left(l-1\right) \approx \Phi \left(\frac{l-mq-1}{\sqrt{mpq}}\right)
+\end{equation*}
+Argument $\Phi$ mówi nam, że $x$ powinien być taki sam. Zatem, mamy nowe $l$ z równania gdzie obliczyliśmy $x$ dla prawdziwego atakującego i wzięliśmy $d_{hp}$ aktualnego obrońcy, i wzięliśmy inne parametry dla naszego standardowego atakującego
+\begin{equation*}
+    \frac{l-\left(k+l-1\right)q}{\sqrt{\left(k+l-1\right)pq}} = x
+\end{equation*}
+\begin{equation*}
+    \frac{\left(\left(l-1\right)p-kq\right)^2}{\left(k+l-1\right)pq} = x^2,
+\end{equation*}
+pamiętaj, że $sign((l-1)p-kq)=sign(x)$
+\begin{equation*}
+    \left(l-1-\frac{kq}{p}\right)^2=x^2\left(\frac{kq}{p}+\left(l-1\right)\frac{q}{p}\right)
+\end{equation*}
+\begin{equation*}
+    \left(l-1\right)^2 -2\left(\frac{kq}{p}+\frac{x^2}{2}\cdot\frac{q}{p}\right)\left(l-1\right)+\left(\frac{kq}{p}\right)^2-\frac{kq}{p}x^2 = 0
+\end{equation*}
+\begin{equation*}
+    l-1 = \frac{kq}{p} + \frac{x^2}{2} \cdot \frac{p}{q} \pm 
+    \sqrt{\frac{x^4}{4} \left(\frac{p}{q}\right)^2 + \frac{kq}{p}x^2\frac{p}{q} + 
+    \cancel{\left(\frac{kq}{p}\right)^2} - \cancel{\left(\frac{kq}{p}\right)^2} +
+    \frac{kq}{p}x^2} = 
+\end{equation*}
+\begin{equation*}
+    \frac{kq}{p} + x\frac{q}{p}\left(\frac{x}{2}\pm\sqrt{
+    \left(\frac{x}{2}\right)^2 + \frac{kq}{p}\left(
+    \left(\frac{q}{p}\right)^{-1} + \left(\frac{q}{p}\right)^{-2}\right)
+    }\right)
+\end{equation*}
+Możemy łatwo zobaczyć (tylko przenosząc $\frac{k}{p}$ na lewą stronę i zrozumieć, że wyrażenie w nawiasach jest zawsze pozytywne albo negatywne), tak, że ujemne rozwiązanie jest fałszywe, więc
+\begin{equation*}
+    l = 1+\frac{q}{k}+x\left(\frac{q}{p}\cdot\frac{x}{2}+\sqrt{
+    \left(\frac{q}{p}\cdot\frac{x}{2}\right)^2 +k\left(\left(\frac{q}{p}\right)^2+1\right)
+    }\right),
+\end{equation*}
+lub podstawiając właściwości standardowej jednostki
+\begin{equation*}
+    l_{s, \:a_{fp}}(x)= 1 + \frac{r}{s}\left\lceil\frac{d_{hp}}{a_{fp}}\right\rceil+x\left(
+    \frac{xr}{2s} +\sqrt{
+    \left(\frac{xr}{2s}\right)^2 + \left\lceil\frac{d_{hp}}{a_{fp}}\right\rceil\left(\left(\frac{r}{s}\right)^2+1\right)
+    }\right).
+\end{equation*}
+Tą wartość prawdopodobnie trzeba będzie zaokrąglić do liczby całkowitej i wprowadzić pewne poprawki iteracyjne do szacowania błędów, ale to pójdzie tak szybko jak szacowanie. Dla przykładu, by powiedzieć w przybliżeniu ilu wojowników ($a_{fp} = 1, s = 1, a_{hp} = 1$), jest równoważnych jednej pół-hit point Artylerii ($a_{fp} = 2, s = 10, a_{hp} = 10$) w ataku na elitarnych Partyzantów ($d_{fp} = 1, r = 1, d_{hp} = 20$), obliczymy
+\begin{equation*}
+    k = \left\lceil\frac{20}{2}\right\rceil = 10,\: l = \left\lceil\frac{10}{1}\right\rceil = 10, \: \frac{r}{s} = 0.8
+\end{equation*}
+\begin{equation*}
+    x = \frac{10 - 1 - 10 \cdot 0.8}{\sqrt{(10-1+10)\cdot 0.8}} = 0.256,
+\end{equation*}
+\begin{equation*}
+l_{1,1}=1+8\cdot20+0.256\cdot(\frac{0.256\cdot8}{2}+\sqrt{
+(\frac{0.256\cdot8}{2})^2+20\cdot(8^2+1)}) = 170.51 \approx 171.
+\end{equation*}
+Wartość precyzji $P_W$ (obliczana przy pomocy formuły Libreoffice Calc / Excel BINOM.DIST z $q=\frac{8}{8+10}=0.444$ dla artylerii i $q=\frac{8}{8+1}=0.889$ dla Wojowników) są równe 0.689 i 0.635. Prawdziwie, najlepiej oszacowana liczba Wojowników wartych zastąpienia Artylerii w tym przypadku wynosi 171 ($P_W=0.690$).
+Możemy użyć tej samej formuły by obliczyć ilość zdrowia (oczywiście, zdrowie atakującego z takimi samymi $f_p$ i siłą $s$ są dodawane z zaokrągleniem do $d_fp$, na przykład k są dodawane) dla każdej określonej jednostki, która zostanie wysłana by zdobyć określony cel, z podanym prawdopodobieństwem. Do obliczenia tego użyjemy funkcji odwróconej normalnej dystrybucji(NORM.S.INV) by uzyskać $x=\Phi^{-1}(P_W)$:
+\begin{equation*}
+    n=\left\lceil l_{s,a_\text{fp}}|_{\Phi^{-1}(P_W)} \over \left\lceil \frac{a_\text{hp}}{d_\text{fp}}\right\rceil\right\rceil,\quad a_\text{hp}=d_\text{fp}\cdot l_{s,a_\text{fp}}|_{\Phi^{-1}(P_W)}
+.\end{equation*}
+W powyższym przykładzie, przy użyciu tej funkcji da nam $x=0.492$, $l_{1,1}=179.7\approx180$ i $P_{W}|l_{1,1}=0.715$ co jest nieco bardziej precyzyjne ale wolniejsze do obliczenia. Zamiennie zabicie atakującego może być definiowane w ten sposób także dla jednostek z ograniczoną liczbą rund, ale wyniki tego działania są tak różne, tak, że ma to mało sensu.
+\newline Zapamiętaj dwie rzeczy:
+\begin{enumerate}
+    \item Potrzebujemy znać zdrowie obrońcy (i inne parametry) by przetworzyć zdrowie atakującego.
+    \item Celowo użyliśmy elitarnych jednostek w powyższym przykładzie, by uniknąć radzenia sobie z jednostkami o statusie weterana (występują wówczas dodatkowe modyfikatory). 
+\end{enumerate}
+
+\section{Przybliżenie z wykorzystaniem klasyfikacji}
+Kod sztucznej inteligencji lubi porównywać siłę jednostek względem (nieokreślone, porada) oceny ich ataku/obrony $a_{r} = a_{hp} \cdot s a_{fp},\: d_{r} = d_{hp} \cdot r \cdot d_{fp}$. Czasami kod sugeruje, że $P_{W}=\frac{a^2_r}{a^2_r+d^2_r}$ a taka kwadratowa ocena jednostek oddziałujących wzajemnie (bez wpływu zasady killstack) są dodawane. Ogólnie nie jest to idealnie precyzyjne ale ma trochę sensu. Używając silnego normalnego przybliżenia, otrzymamy to
+\begin{equation*}
+    P_{W}=\Phi\left(\frac{l_p-kq}{\sqrt{\left(k+l\right)pg}} \right)=
+    \Phi\left(\frac{a_r-d_r}{\sqrt{a_{fp}d_{fp}\left(a_rr+d_rs\right)}}\right)\approx
+    \Phi\left( \frac{\frac{a_r}{d_r}-1}{\sqrt{\frac{a_r}{d_r}\left(
+    \frac{1}{k}+\frac{1}{l}
+    \right)}
+    }\right)
+\end{equation*}
+Ta funkcja występuję również w postaci $\frac{
+\left( \frac{a_r}{d_r} \right)^2
+}{\left( \frac{a_r}{d_r} \right)^2 +1}$
+gdy $\frac{1}{k}+\frac{1}{l} \approx 0.79$ ale tylko podobnie gdy oznaczone wartości znacznie się różnią.
+Suma kwadratów ocen ma tylko taki sens, że wagi silniejszych jednostek są większe niż suma liniowych ocen, tak więc widzisz, że nie tylko jeden stos jest w stanie pobić inny, ale to jak dużo jednostek które przetrwają bitwę, jest aktualnie pożądanym wynikiem. W rzeczywistości, jeżeli odchylenie jest na prawdę małe, w bitwie 1 jednostki przeciw $n$ jednostką z taką samą sumą ocen zazwyczaj jedna jednostka z którejś strony przetrwa, ale dla jednej strony jedna jednostka to jej $100\%$ a dla innej strony to tylko 1 z $n$, więc dla takich bitew musisz wyprodukować około $n_2$ razy więcej mniejszych jednostek by utrzymać się przy życiu.
+
+\section{Pozostałe HP}
+Dobrze, może i wygrałeś. Ale czy chcesz aby twoje zwycięstwo było Pyrrusowe? Czy twoja \emph{Piechota Zmechanizowana} po pokonaniu \emph{Muszkieterów} ma wystarczająco dużo pozostałego \emph{HP} by obronić się w następnej turze przed parą przyczajonych w pobliżu \emph{Wojowników}?
+\newline{Nieograniczony dopasowanie wariantów}
+Używając powyższych symboli, możemy szybko obliczyć punkty zdrowia atakującego $a_{hp}$ po przegraniu $d$ rund przez broniącą się jednostkę o sile ognia $d_{fp}$
+\begin{equation*}
+    a'_{hp} = a_{hp} - d \cdot d_{fp}\quad,
+\end{equation*}
+tutaj $d \in [0;l-1]$. Prawdopodobieństwo posiadania co najmniej $x,x\leq a_{hp}$ pozostałe hp w przypadku zwycięstwa możemy szybko uzyskać modyfikując 2 równanie
+\begin{equation*}
+    P(a_\text{hp}'\ge x|\text{win}) = \mathrm P\left(d\le \left\lfloor \frac{a_\text{hp}-x}{d_\text{fp}}\right\rfloor=d_x\text{, suppose }d_x\le m|\text{win}\right)=
+\end{equation*}
+\begin{equation*}
+    =\frac{1}{P_W}\sum_{d=0}^{d_x}{k - 1 + d \choose k-1} p^k q^d\text{.}
+\end{equation*}
+Ta suma wygląda jak \emph{Rozkład Pascala} $NB(k,p)$, to zarządza liczbą $d$ przegranych w rozkładzie Newtona, przed osiągnięciem $k$ sukcesów, co zdarza się z prawdopodobieństwem $p$ każdego przeprowadzonego testu:
+\begin{equation*}
+    P\left(a'_{hp} \geq x|win\right) = 
+    \frac{1}{P_W}F_{NB\: k,p} \left(\left\lfloor
+    \frac{a_{hp}-x}{d_{fp}}\right\rfloor\right)
+    \text{,}
+\end{equation*}
+a prawdopodobieństwo przegrania określonej liczby rund $d,0\leq d < l$
+\begin{equation*}
+    P(d) = f(NB\: k,p)(d) = \dbinom{k-1+d}{d}p^{k}q^{d}
+    \text{.}
+\end{equation*}
+\emph{Rozkład Pascala} oznacza $\frac{kq}{p}=k\frac{r}{s}$. Jeżeli $p\approx 1$ a średnia jest umiarkowana, to można przybliżyć to poprzez \emph{rozkład Poissona} z takimi samymi parametrami; jeżeli $p\approx 0.5$ to jest to zbliżone do normalnego rozkładu z wariancją podobną do niej samej, co oznacza $\sigma^2 = \frac{kq}{p^2}$ (a dla $k=1$ rozkład przyjmuje postać regresji geometrycznej). Ale jest to zdefiniowane do nieskończoności, a to co tu mamy to odcięcie wyników w $l$. Średnia liczba przegranych rund w przypadku wygrania bitwy, zależna od właściwości odciętego rozkładu, będzie następująca
+\begin{equation*}
+    \langle d\vert d<l \rangle = k\frac{q}{p}-\frac{\frac{kl}{p}f_{NB\:k,p}(l)}{kP_{W}} =
+    \frac{kq}{p} - \frac{lf_{NB\:k,p}(l)}{pP_{W}}
+\end{equation*}
+gdzie nieodcięta funkcja prawdopodobieństwa o określonej wartości
+\begin{equation*}
+    f_{NB\: k,p}(d)= \binom{k-1+d}{d}p^{k}q^{d}
+    \text{.}
+\end{equation*}
+Podobnie, gdy atakujący zginie, średnia suma obrażeń jakie odniesie obrońca będzie równa
+\begin{equation*}
+    \langle w\vert w<k \rangle = \frac{lp}{q} - 
+    \frac{kf_{NB \: l,q}(k)}{qP_{L}}
+    \text{.}
+\end{equation*}
+Weź pod uwagę, że ekwiwalent zabić nie w ogólnym rozumieniu ekwiwalentem obrażeń. W powyższym przykładzie, jeżeli \emph{Artyleria} zginie, to są redukowane hp \emph{Partyzantów} (nie zapomnij by pomnożyć przez $a_{fp}$) ze średnią na poziomie 13.75, podczas gdy hordy  171, 177 i 180  \emph{Wojowników} zrobią to odpowiednio na 16.4 16.56 i 16.64 zostawiając jakby o połowę mniej.
+\newline
+Jeżeli użyjemy pojęcia wymyślonej bitwy, wygranie po przegraniu $ d \leq d_{x}$ rund jest równoznaczne wygraniu $k$ lub więcej rund w $k+d_{x}$ bitwie zatem możemy wyrazić skumulowany rozkład obrażeń poprzez dodatnią  funkcję rozkładu Newtona z przesuwalnymi parametrami
+\begin{equation*}
+    P(a'_{hp}\geq x \vert win)=
+    \frac{1}{P_{W}}\sum^{k+d_{x}}_{i=k}\binom{k+d_{x}}{i}p^{i}q^{k+d_{x}-i}=
+\end{equation*}
+\begin{equation}
+    = \frac{1}{P_{W}} ( 1- F_{B \: k+d_{x},p}(k-1))
+    \text{.}
+\end{equation}
+\begin{thebibliography}{99} 
+\bibitem{Freeciv}
+https://freeciv.fandom.com/wiki/Math\_of\_Freeciv/Battle\_outcome
+\end{thebibliography}
+\end{document}
